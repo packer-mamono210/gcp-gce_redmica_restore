@@ -30,8 +30,8 @@
         "--extra-vars", "aws_secret_access_key={{user `aws_secret_key`}}",
         "--extra-vars", "aws_region={{user `aws_region`}}",
         "--extra-vars", "local_file_name={{user `local_file_name`}}",
-        "--extra-vars", "pip_executable=pip",
-        "--extra-vars", "pip_package=python-pip",
+        "--extra-vars", "pip_executable=pip3",
+        "--extra-vars", "pip_package=python3-pip",
         "--extra-vars", "s3_bucket={{user `s3_bucket`}}",
         "--extra-vars", "s3_object_name={{user `s3_object_name`}}",
         "--extra-vars", "working_dir={{user `working_dir`}}"

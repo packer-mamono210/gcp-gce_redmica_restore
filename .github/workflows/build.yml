@@ -10,12 +10,6 @@ on:
 jobs:
   pakcer:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        git-version:
-          - master
-          - v1.2.0
-
     steps:
       - uses: actions/checkout@v2
 
@@ -47,7 +41,7 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@master
         with:
-          project_id: 'buoyant-world-263612' 
+          project_id: 'buoyant-world-263612'
           service_account_key: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_ENCODED }}
           export_default_credentials: true
 
@@ -57,7 +51,7 @@ jobs:
 
           SOURCE_IMAGE=$(gcloud compute images list \
           --format="value(NAME)" \
-          --filter="name~'redmica-golden-image-${GIT_VERSION}'" \
+          --filter="name~'redmica-golden-image'" \
           --sort-by=~creationTimestamp \
           --limit=1 \
           | awk '{print $1}')
