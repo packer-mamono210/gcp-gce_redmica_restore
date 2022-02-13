@@ -23,8 +23,9 @@
   }],
   "provisioners": [
     {
-      "type": "ansible",
-      "playbook_file": "./aws-s3/get.yml",
+      "ansible_env_vars": [
+        "ANSIBLE_PYTHON_INTERPRETER=/usr/libexec/platform-python"
+      ],
       "extra_arguments": [
         "--extra-vars", "aws_access_key_id={{user `aws_access_key`}}",
         "--extra-vars", "aws_secret_access_key={{user `aws_secret_key`}}",
@@ -36,11 +37,16 @@
         "--extra-vars", "s3_object_name={{user `s3_object_name`}}",
         "--extra-vars", "working_dir={{user `working_dir`}}"
       ],
-      "galaxy_file": "./aws-s3/roles/requirements.yml"
+      "galaxy_file": "./aws-s3/roles/requirements.yml",
+      "playbook_file": "./aws-s3/get.yml",
+      "type": "ansible"
     },
     {
-      "type": "ansible",
-      "playbook_file": "./redmine_restore/restore.yml"
+      "ansible_env_vars": [
+        "ANSIBLE_PYTHON_INTERPRETER=/usr/libexec/platform-python"
+      ],
+      "playbook_file": "./redmine_restore/restore.yml",
+      "type": "ansible"
     }
   ]
 }
