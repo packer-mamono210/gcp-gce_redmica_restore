@@ -1,0 +1,215 @@
+version: 2.1
+
+executors:
+  packer:
+    docker:
+      - image: ghcr.io/docker-images-mamono210/circleci-executors/molecule-ec2:latest
+    resource_class: small
+
+orbs:
+  gcp-cli: circleci/gcp-cli@3.1.0
+  aws-cli: circleci/aws-cli@3.1.1
+
+jobs:
+  packer:
+    executor: packer
+    parameters:
+      aws-role-session-name:
+        type: string
+      boot-disk-size:
+        type: string
+      instance-name:
+        type: string
+      machine-image-name:
+        type: string
+      machine-type:
+        default: n1-standard-1
+        type: string
+      project-name:
+        type: string
+      service-account:
+        type: string
+      source-machine-image:
+        type: string
+      zone:
+        type: string
+    steps:
+      - checkout
+      - gcp-cli/setup
+      - aws-cli/setup:
+          profile-name: default
+          role-arn: ${AWS_ROLE_ARN}
+          role-session-name: << parameters.aws-role-session-name >>
+          session-duration: '3600'
+      - run:
+          name: Set environment variables to create unique resources
+          command: |
+            TIMESTAMP=$(date --date "9 hours" "+%Y%m%d-%H%M%S")
+            echo "export INSTANCE_NAME=<< parameters.instance-name>>-${TIMESTAMP}" >> $BASH_ENV
+            echo "export MACHINE_IMAGE_NAME=<< parameters.machine-image-name >>-${TIMESTAMP}" >> $BASH_ENV
+            source $BASH_ENV
+      - run:
+          name: Create instance
+          command: |
+            gcloud compute instances create ${INSTANCE_NAME} \
+              --project=<< parameters.project-name >> \
+              --zone=<< parameters.zone >> \
+              --machine-type=<< parameters.machine-type >> \
+              --boot-disk-size=<< parameters.boot-disk-size >> \
+              --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+              --maintenance-policy=MIGRATE \
+              --provisioning-model=STANDARD \
+              --service-account=<< parameters.service-account >> \
+              --scopes=https://www.googleapis.com/auth/compute,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/trace.append,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/devstorage.read_only \
+              --no-shielded-secure-boot \
+              --shielded-vtpm \
+              --shielded-integrity-monitoring \
+              --labels=goog-ec-src=vm_add-gcloud \
+              --reservation-affinity=any \
+              --source-machine-image=<< parameters.source-machine-image >>
+      - run:
+          name: Create SSH Key
+          command: |
+            gcloud compute ssh centos@${INSTANCE_NAME} \
+            --command "cat /etc/redhat-release" \
+            --zone=<< parameters.zone >> \
+            --quiet
+
+            # Set Strict host key checking no
+            echo "StrictHostKeyChecking no" > ~/.ssh/config
+      - run:
+          name: Retrieve Ansible playbook
+          command: |
+            git clone https://github.com/ansible-playbooks-mamono210/aws-s3.git
+            cd aws-s3
+            ansible-galaxy install -r roles/requirements.yml
+      - run:
+          name: Retrieve Redmine archived media file
+          command: |
+            # Get external Ip addr
+            ip_addr=$(
+                       gcloud compute instances describe ${INSTANCE_NAME} \
+                         --format='get(networkInterfaces[0].accessConfigs[0].natIP)' \
+                         --zone=<< parameters.zone >> \
+                     )
+
+            # Execute Ansible playbook
+            cd aws-s3
+            ansible-playbook -i ${ip_addr}, \
+            -u centos \
+            --key-file="~/.ssh/google_compute_engine" \
+            -e "s3_bucket=mamono210" \
+            -e "s3_object_name=circleci-gce/redmine/stop/files.tar.gz" \
+            -e "remote_directory=/tmp/redmine-backup" \
+            -e "remote_file_name=files.tar.gz" \
+            get.yml
+          environment:
+            ANSIBLE_FORCE_COLOR: '1'
+            PY_COLORS: '1'
+            TZ: 'Asia/Tokyo'
+      - run:
+          name: Retrieve Redmine archived Git file
+          command: |
+            # Get external Ip addr
+            ip_addr=$(
+                       gcloud compute instances describe ${INSTANCE_NAME} \
+                         --format='get(networkInterfaces[0].accessConfigs[0].natIP)' \
+                         --zone=<< parameters.zone >> \
+                     )
+
+            # Execute Ansible playbook
+            cd aws-s3
+            ansible-playbook -i ${ip_addr}, \
+            -u centos \
+            --key-file="~/.ssh/google_compute_engine" \
+            -e "s3_bucket=mamono210" \
+            -e "s3_object_name=circleci-gce/redmine/stop/git.tar.gz" \
+            -e "remote_directory=/tmp/redmine-backup" \
+            -e "remote_file_name=git.tar.gz" \
+            get.yml
+          environment:
+            ANSIBLE_FORCE_COLOR: '1'
+            PY_COLORS: '1'
+            TZ: 'Asia/Tokyo'
+      - run:
+          name: Retrieve Redmine dumped database file
+          command: |
+            # Get external Ip addr
+            ip_addr=$(
+                       gcloud compute instances describe ${INSTANCE_NAME} \
+                         --format='get(networkInterfaces[0].accessConfigs[0].natIP)' \
+                         --zone=<< parameters.zone >> \
+                     )
+
+            # Execute Ansible playbook
+            cd aws-s3
+            ansible-playbook -i ${ip_addr}, \
+            -u centos \
+            --key-file="~/.ssh/google_compute_engine" \
+            -e "s3_bucket=mamono210" \
+            -e "s3_object_name=circleci-gce/redmine/stop/redmine.psql" \
+            -e "remote_directory=/tmp/redmine-backup" \
+            -e "remote_file_name=redmine.psql" \
+            get.yml
+          environment:
+            ANSIBLE_FORCE_COLOR: '1'
+            PY_COLORS: '1'
+            TZ: 'Asia/Tokyo'
+      - run:
+          name: Retrieve Ansible playbook
+          command: |
+            git clone https://github.com/ansible-playbooks-mamono210/redmine_restore.git
+            cd redmine_restore
+            ansible-galaxy install -r roles/requirements.yml
+      - run:
+          name: Install Redmica
+          command: |
+            # Get external Ip addr
+            ip_addr=$(
+                       gcloud compute instances describe ${INSTANCE_NAME} \
+                         --format='get(networkInterfaces[0].accessConfigs[0].natIP)' \
+                         --zone=<< parameters.zone >> \
+                     )
+
+            # Execute Ansible playbook
+            cd redmine_restore
+            ansible-playbook -i ${ip_addr}, \
+            -u centos \
+            --key-file="~/.ssh/google_compute_engine" \
+            restore.yml
+          environment:
+            ANSIBLE_FORCE_COLOR: '1'
+            PY_COLORS: '1'
+            TZ: 'Asia/Tokyo'
+      - run:
+          name: Register machine image
+          command: |
+            gcloud beta compute machine-images create ${MACHINE_IMAGE_NAME} \
+              --project=<< parameters.project-name >> \
+              --source-instance=${INSTANCE_NAME} \
+              --source-instance-zone=<< parameters.zone >> \
+              --storage-location=us
+      - run:
+          name: Delete instance
+          command: |
+            gcloud compute instances delete ${INSTANCE_NAME} \
+              --project=<< parameters.project-name >> \
+              --zone=<< parameters.zone >>
+
+workflows:
+  version: 2.1
+  packer:
+    jobs:
+      - packer:
+          boot-disk-size: '40'
+          context:
+            - CLOUD
+            - AWS_OPENID_CONNECT_TOKENS
+          aws-role-session-name: 'packer-redmica-restore-centos-stream-8-gce'
+          machine-image-name: 'redmica-restore'
+          machine-type: 'n1-standard-1'
+          instance-name: 'packer-redmica-restore-centos-stream-8'
+          project-name: 'buoyant-world-263612'
+          service-account: 'packer-mamono210-circleci@buoyant-world-263612.iam.gserviceaccount.com'
+          source-machine-image: 'redmica-golden-image-20230805-183107'
+          zone: 'us-central1-a'
