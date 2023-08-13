@@ -3,7 +3,7 @@ version: 2.1
 executors:
   packer:
     docker:
-      - image: ghcr.io/docker-images-mamono210/circleci-executors/molecule-ec2:latest
+      - image: ghcr.io/docker-images-mamono210/circleci-executors/ansible:latest
     resource_class: small
 
 orbs:
