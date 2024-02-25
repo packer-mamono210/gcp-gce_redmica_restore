@@ -147,9 +147,9 @@ jobs:
             -u centos \
             --key-file="~/.ssh/google_compute_engine" \
             -e "s3_bucket=mamono210" \
-            -e "s3_object_name=circleci-gce/redmine/stop/redmine.psql" \
+            -e "s3_object_name=circleci-gce/redmine/stop/redmine.sql" \
             -e "remote_directory=/tmp/redmine-backup" \
-            -e "remote_file_name=redmine.psql" \
+            -e "remote_file_name=redmine.sql" \
             get.yml
           environment:
             ANSIBLE_FORCE_COLOR: '1'
