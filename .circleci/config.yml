@@ -205,19 +205,6 @@ workflows:
           context:
             - CLOUD
             - AWS_OPENID_CONNECT_TOKENS
-          aws-role-session-name: 'packer-redmica-restore-cs8-gce'
-          machine-image-name: 'redmica-restore-cs8'
-          machine-type: 'n1-standard-1'
-          instance-name: 'packer-redmica-restore-cs8'
-          project-name: 'buoyant-world-263612'
-          service-account: 'packer-mamono210-circleci@buoyant-world-263612.iam.gserviceaccount.com'
-          source-machine-image: 'redmica-golden-image-centos-stream8-20240221-001055'
-          zone: 'us-central1-a'
-      - packer:
-          boot-disk-size: '40'
-          context:
-            - CLOUD
-            - AWS_OPENID_CONNECT_TOKENS
           aws-role-session-name: 'packer-redmica-restore-cs9-gce'
           machine-image-name: 'redmica-restore-cs9'
           machine-type: 'n1-standard-1'
