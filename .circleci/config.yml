@@ -211,5 +211,5 @@ workflows:
           instance-name: 'packer-redmica-restore-cs9'
           project-name: 'buoyant-world-263612'
           service-account: 'packer-mamono210-circleci@buoyant-world-263612.iam.gserviceaccount.com'
-          source-machine-image: 'redmica-golden-image-centos-stream9-20240221-001058'
+          source-machine-image: 'redmica-golden-image-centos-stream9-20260116-191407'
           zone: 'us-central1-a'
